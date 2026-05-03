@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Predicting Colorectal Cancer Survival Using SEER Data</title>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,300&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a1a1a;
+      --ink-muted: #4a4a4a;
+      --ink-faint: #7a7a7a;
+      --rule: #d0cfc8;
+      --bg: #f9f7f2;
+      --bg-card: #ffffff;
+      --accent: #8b1a1a;
+      --accent-light: #c0392b;
+      --highlight: #f0ebe0;
+      --mono: 'DM Mono', monospace;
+      --serif: 'Source Serif 4', Georgia, serif;
+      --display: 'Libre Baskerville', Georgia, serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--serif);
+      font-size: 17px;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--ink);
+      color: #f9f7f2;
+      padding: 4rem 2rem 3.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 39px,
+        rgba(255,255,255,0.04) 39px,
+        rgba(255,255,255,0.04) 40px
+      );
+      pointer-events: none;
+    }
+
+    .header-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .header-label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent-light);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .header-label::after {
+      content: '';
+      display: block;
+      height: 1px;
+      width: 48px;
+      background: var(--accent-light);
+      opacity: 0.6;
+    }
+
+    header h1 {
+      font-family: var(--display);
+      font-size: clamp(1.6rem, 3.5vw, 2.5rem);
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      margin-bottom: 1.5rem;
+      max-width: 680px;
+    }
+
+    .header-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 2rem;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: rgba(249,247,242,0.55);
+      letter-spacing: 0.04em;
+    }
+
+    .header-meta span {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* ── NAV BAR ── */
+    nav {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--rule);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav-inner::-webkit-scrollbar { display: none; }
+
+    nav a {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      text-decoration: none;
+      padding: 0.9rem 1.25rem;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* ── LAYOUT ── */
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 2rem 5rem;
+    }
+
+    /* ── ABSTRACT ── */
+    .abstract {
+      margin: 3rem 0 0;
+      padding: 2.25rem 2.5rem;
+      background: var(--highlight);
+      border-left: 3px solid var(--accent);
+      position: relative;
+    }
+
+    .abstract-label {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    .abstract p {
+      font-size: 0.95rem;
+      color: var(--ink-muted);
+      font-style: italic;
+      line-height: 1.8;
+    }
+
+    /* ── SECTIONS ── */
+    section {
+      margin-top: 3.5rem;
+      padding-top: 3.5rem;
+      border-top: 1px solid var(--rule);
+    }
+
+    section:first-of-type { border-top: none; }
+
+    .section-number {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      margin-bottom: 0.5rem;
+    }
+
+    h2 {
+      font-family: var(--display);
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--ink);
+      margin-bottom: 1.25rem;
+      line-height: 1.2;
+    }
+
+    h3 {
+      font-family: var(--display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 2rem 0 0.75rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    p { margin-bottom: 1.1rem; }
+    p:last-child { margin-bottom: 0; }
+
+    /* ── TABLES ── */
+    .table-wrap {
+      margin: 1.75rem 0;
+      overflow-x: auto;
+    }
+
+    .table-caption {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      color: var(--ink-faint);
+      margin-bottom: 0.6rem;
+      text-transform: uppercase;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    thead tr {
+      background: var(--ink);
+      color: #f9f7f2;
+    }
+
+    thead th {
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.75rem 1rem;
+      text-align: left;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--rule);
+      transition: background 0.12s;
+    }
+
+    tbody tr:hover { background: var(--highlight); }
+
+    tbody td {
+      padding: 0.7rem 1rem;
+      color: var(--ink-muted);
+      vertical-align: top;
+    }
+
+    tbody td:first-child {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    /* ── METRICS GRID ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+      margin: 1.75rem 0;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+    }
+
+    .metric-label {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-value {
+      font-family: var(--display);
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .metric-sub {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--ink-faint);
+      margin-top: 0.3rem;
+    }
+
+    /* ── STAT CALLOUT ── */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+      margin: 1.75rem 0;
+    }
+
+    .stat-item {
+      background: var(--highlight);
+      padding: 1.25rem 1.5rem;
+    }
+
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 0.35rem;
+    }
+
+    .stat-value {
+      font-family: var(--display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    /* ── COEFFICIENT LIST ── */
+    .coef-group {
+      margin: 1.25rem 0;
+    }
+
+    .coef-group-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+      padding: 0.35rem 0.75rem;
+      display: inline-block;
+    }
+
+    .coef-group.positive .coef-group-label {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .coef-group.negative .coef-group-label {
+      background: #fce4e4;
+      color: #8b1a1a;
+    }
+
+    .coef-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--rule);
+      font-size: 0.9rem;
+    }
+
+    .coef-item:last-child { border-bottom: none; }
+
+    .coef-name { color: var(--ink-muted); }
+
+    .coef-val {
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 0.88rem;
+    }
+
+    .coef-group.positive .coef-val { color: #2e7d32; }
+    .coef-group.negative .coef-val { color: var(--accent); }
+
+    .coef-bar-wrap {
+      width: 80px;
+      height: 4px;
+      background: var(--rule);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-left: 1rem;
+    }
+
+    .coef-bar {
+      height: 100%;
+      border-radius: 2px;
+    }
+
+    .coef-group.positive .coef-bar { background: #2e7d32; }
+    .coef-group.negative .coef-bar { background: var(--accent); }
+
+    /* ── FINDINGS LIST ── */
+    .findings-list {
+      list-style: none;
+      margin: 1rem 0;
+    }
+
+    .findings-list li {
+      padding: 0.65rem 0 0.65rem 1.5rem;
+      position: relative;
+      border-bottom: 1px solid var(--rule);
+      font-size: 0.93rem;
+      color: var(--ink-muted);
+    }
+
+    .findings-list li:last-child { border-bottom: none; }
+
+    .findings-list li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-family: var(--mono);
+    }
+
+    /* ── APPLICATIONS GRID ── */
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin: 1.25rem 0;
+    }
+
+    .app-card {
+      border: 1px solid var(--rule);
+      padding: 1.1rem 1.25rem;
+      background: var(--bg-card);
+      font-size: 0.88rem;
+      color: var(--ink-muted);
+      position: relative;
+      padding-left: 1.5rem;
+    }
+
+    .app-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--accent);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--ink);
+      color: rgba(249,247,242,0.45);
+      padding: 2rem;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+    }
+
+    footer strong { color: rgba(249,247,242,0.8); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      header { padding: 2.5rem 1.25rem 2.5rem; }
+      main { padding: 0 1.25rem 4rem; }
+      h2 { font-size: 1.35rem; }
+      .metric-value { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <div class="header-label">Oncology &amp; Healthcare Analytics</div>
+    <h1>Predicting Colorectal Cancer Survival Using SEER Data: A Regression-Based Analysis</h1>
+    <div class="header-meta">
+      <span>📊 Dataset: SEER Program</span>
+      <span>📋 Records: 198,346</span>
+      <span>📅 Diagnosis Years: 2010–2015</span>
+      <span>🔬 Model: Multiple Linear Regression</span>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#abstract">Abstract</a>
+    <a href="#introduction">Introduction</a>
+    <a href="#data">Data</a>
+    <a href="#eda">EDA</a>
+    <a href="#model">Model</a>
+    <a href="#findings">Findings</a>
+    <a href="#conclusion">Conclusion</a>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ABSTRACT -->
+  <div class="abstract" id="abstract">
+    <div class="abstract-label">Abstract</div>
+    <p>This study analyzes colorectal cancer survival outcomes using a dataset derived from the Surveillance, Epidemiology, and End Results (SEER) program. The objective is to evaluate whether patient demographics and clinical characteristics can predict survival duration following diagnosis. A multiple linear regression model was developed using features such as cancer stage, age, race, and diagnosis year. Results indicate that cancer stage is the strongest predictor of survival, with localized disease associated with significantly improved outcomes. While the model demonstrates moderate predictive performance (R² = 0.3114), findings highlight the value of structured healthcare data in identifying survival patterns and informing data-driven decision-making in oncology.</p>
+  </div>
+
+  <!-- INTRODUCTION -->
+  <section id="introduction">
+    <div class="section-number">01 — Introduction</div>
+    <h2>Introduction</h2>
+    <p>This project examines colorectal cancer survival outcomes using a cleaned dataset derived from the SEER program. The primary objective is to assess whether patient demographics and clinical characteristics can be used to predict survival duration following a colorectal cancer diagnosis.</p>
+    <p>Survival analysis is a core component of healthcare analytics, particularly in oncology. Identifying patient populations at higher risk for poor outcomes enables providers to implement earlier interventions, enhance care coordination, and allocate resources more effectively. By analyzing patterns across variables such as cancer stage, age, race, and year of diagnosis, this study aims to identify the factors most strongly associated with survival duration and support data-driven decision-making in cancer care.</p>
+  </section>
+
+  <!-- DATA COLLECTION -->
+  <section id="data">
+    <div class="section-number">02 — Data</div>
+    <h2>Data Collection</h2>
+    <p>The dataset used in this analysis originates from the SEER program, a nationally recognized cancer surveillance system that collects detailed information on cancer incidence, patient demographics, tumor characteristics, treatment, and survival outcomes. SEER was selected due to its comprehensive scope, standardized structure, and widespread use in oncology research.</p>
+    <p>The final dataset includes 198,346 colorectal cancer records and contains the following key variables:</p>
+
+    <div class="table-wrap">
+      <div class="table-caption">Table 1 — Dataset Variables</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Diagnosis Year</td><td>Year of cancer diagnosis</td></tr>
+          <tr><td>Race</td><td>Patient race category</td></tr>
+          <tr><td>Stage</td><td>Cancer stage at diagnosis</td></tr>
+          <tr><td>Age 85+</td><td>Binary indicator (1 = ≥85, 0 = &lt;85)</td></tr>
+          <tr><td>Survival Months</td><td>Months survived following diagnosis</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The target variable for this analysis is <code style="font-family:var(--mono);font-size:0.85em;background:var(--highlight);padding:0.1em 0.35em;">survival_months</code>, representing the primary outcome of interest.</p>
+
+    <h3>Data Preprocessing</h3>
+    <p>Prior to analysis, the dataset underwent several preprocessing steps to ensure data quality and consistency. The raw data contained missing values, unknown stage categories, and in situ cases which were removed during preprocessing. After cleaning, no missing values remained in the final analytical dataset.</p>
+
+    <div class="table-wrap">
+      <div class="table-caption">Table 2 — Preprocessing Steps</div>
+      <table>
+        <thead>
+          <tr><th>Step</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Column Standardization</td><td>Renamed columns for clarity and consistency</td></tr>
+          <tr><td>Text Normalization</td><td>Converted text fields to lowercase</td></tr>
+          <tr><td>Data Cleaning</td><td>Removed extraneous symbols and formatting inconsistencies</td></tr>
+          <tr><td>Stage Filtering</td><td>Excluded unknown or unstaged cancer cases</td></tr>
+          <tr><td>Case Selection</td><td>Removed in situ cases to focus on invasive cancer stages</td></tr>
+          <tr><td>Timeframe Restriction</td><td>Limited diagnosis years to 2010–2015</td></tr>
+          <tr><td>Age Transformation</td><td>Converted age into a binary variable (under 85 vs. 85 and older)</td></tr>
+          <tr><td>Categorical Encoding</td><td>Applied dummy encoding to categorical variables</td></tr>
+          <tr><td>Feature Scaling</td><td>Standardized numeric features prior to modeling</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-caption">Table 3 — Dataset Characteristics</div>
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Total Records</td><td>198,346</td></tr>
+          <tr><td>Features</td><td>5 primary variables (expanded into 9 predictors via dummy encoding)</td></tr>
+          <tr><td>Missing Values</td><td>None (after preprocessing; raw data contained missing and unknown values that were removed)</td></tr>
+          <tr><td>Diagnosis Years</td><td>2010–2015</td></tr>
+          <tr><td>Survival Range</td><td>0–155 months (observed duration; censoring not explicitly modeled)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- EDA -->
+  <section id="eda">
+    <div class="section-number">03 — Exploratory Data Analysis</div>
+    <h2>Exploratory Data Analysis</h2>
+
+    <h3>Descriptive Statistics</h3>
+    <div class="stat-row">
+      <div class="stat-item">
+        <div class="stat-label">Mean Survival</div>
+        <div class="stat-value">68.42 <span style="font-size:0.85rem;font-weight:400;font-family:var(--serif)">mo.</span></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Median Survival</div>
+        <div class="stat-value">73 <span style="font-size:0.85rem;font-weight:400;font-family:var(--serif)">mo.</span></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Std. Deviation</div>
+        <div class="stat-value">49.19 <span style="font-size:0.85rem;font-weight:400;font-family:var(--serif)">mo.</span></div>
+      </div>
+    </div>
+    <p>These values indicate substantial variability in survival outcomes.</p>
+
+    <h3>Population Distribution</h3>
+    <p>The majority of patients were classified as White, followed by Black, Asian or Pacific Islander, and American Indian/Alaska Native.</p>
+
+    <h3>Clinical Insights</h3>
+    <ul class="findings-list">
+      <li>Localized stage is associated with longer survival</li>
+      <li>Distant stage is associated with shorter survival</li>
+      <li>Age 85+ is associated with reduced survival</li>
+    </ul>
+
+    <div class="table-wrap">
+      <div class="table-caption">Table 4 — Feature Relationships with Survival</div>
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Relationship with Survival</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Localized Stage</td><td>Strong positive association (r = +0.32)</td></tr>
+          <tr><td>Distant Stage</td><td>Strong negative association (r = −0.47)</td></tr>
+          <tr><td>Age 85+</td><td>Negative association (r = −0.23)</td></tr>
+          <tr><td>Diagnosis Year</td><td>Negative association (r = −0.16) — reflects right-censoring artifact, not worsening outcomes</td></tr>
+          <tr><td>Asian/Pacific Islander Race</td><td>Slight positive association</td></tr>
+          <tr><td>Black Race</td><td>Slight negative association (statistically present but clinically modest)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Cancer stage at diagnosis emerged as the most influential variable. <strong>Note on diagnosis year:</strong> The observed negative association between diagnosis year and survival is a data artifact driven by right-censoring — patients diagnosed closer to the 2015 data extract date had less follow-up time recorded, not necessarily worse outcomes. This limitation is addressed in the model interpretation section.</p>
+  </section>
+
+  <!-- MODEL -->
+  <section id="model">
+    <div class="section-number">04 — Model Development</div>
+    <h2>Model Development</h2>
+    <p>A multiple linear regression model was developed to predict survival months using the selected features. The dataset was divided into training and testing subsets using an 80/20 split:</p>
+
+    <div class="stat-row">
+      <div class="stat-item">
+        <div class="stat-label">Training Set</div>
+        <div class="stat-value" style="font-size:1.2rem;">158,676</div>
+        <div style="font-family:var(--mono);font-size:0.68rem;color:var(--ink-faint);margin-top:0.2rem;">records (80%)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Test Set</div>
+        <div class="stat-value" style="font-size:1.2rem;">39,670</div>
+        <div style="font-family:var(--mono);font-size:0.68rem;color:var(--ink-faint);margin-top:0.2rem;">records (20%)</div>
+      </div>
+    </div>
+
+    <p>Categorical variables were transformed into dummy variables, and all predictors were standardized prior to modeling.</p>
+
+    <h3>Predictors Included</h3>
+    <ul class="findings-list">
+      <li>Diagnosis year</li>
+      <li>Age group (85+)</li>
+      <li>Race categories</li>
+      <li>Cancer stage categories</li>
+    </ul>
+
+    <h3>Model Evaluation</h3>
+    <p>Model performance was evaluated using standard regression metrics:</p>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">R²</div>
+        <div class="metric-value">0.3114</div>
+        <div class="metric-sub">Variance explained</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">MAE</div>
+        <div class="metric-value">34.10</div>
+        <div class="metric-sub">months</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">RMSE</div>
+        <div class="metric-value">40.80</div>
+        <div class="metric-sub">months</div>
+      </div>
+    </div>
+
+    <p>An R² value of 0.3114 indicates that the model explains approximately 31% of the variance in survival outcomes — moderate but expected performance given the clinical complexity of cancer survival and the limited feature set available. Survival outcomes are influenced by many factors not captured here (treatment type, comorbidities, tumor grade), so this level of explanatory power is reasonable for a regression-based baseline model. The MAE and RMSE values reflect this inherent variability.</p>
+
+    <h3>Model Interpretation</h3>
+    <p>Model coefficients indicated that cancer stage, age, and diagnosis year were the most influential predictors. Note that linear regression was used for pedagogical simplicity; survival-specific models such as Cox proportional hazards or Kaplan-Meier estimators would better handle censored data and could improve accuracy.</p>
+
+    <div class="coef-group positive">
+      <div class="coef-group-label">Positive Predictors</div>
+      <div class="coef-item">
+        <span class="coef-name">Localized stage</span>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div class="coef-bar-wrap"><div class="coef-bar" style="width:100%"></div></div>
+          <span class="coef-val">+30.42 mo.</span>
+        </div>
+      </div>
+      <div class="coef-item">
+        <span class="coef-name">Regional lymph node involvement</span>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div class="coef-bar-wrap"><div class="coef-bar" style="width:58%"></div></div>
+          <span class="coef-val">+17.62 mo.</span>
+        </div>
+      </div>
+      <div class="coef-item">
+        <span class="coef-name">Regional direct extension</span>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div class="coef-bar-wrap"><div class="coef-bar" style="width:54%"></div></div>
+          <span class="coef-val">+16.37 mo.</span>
+        </div>
+      </div>
+      <div class="coef-item">
+        <span class="coef-name">Combined regional involvement</span>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div class="coef-bar-wrap"><div class="coef-bar" style="width:43%"></div></div>
+          <span class="coef-val">+13.14 mo.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="coef-group negative">
+      <div class="coef-group-label">Negative Predictors</div>
+      <div class="coef-item">
+        <span class="coef-name">Age 85+</span>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div class="coef-bar-wrap"><div class="coef-bar" style="width:100%"></div></div>
+          <span class="coef-val">−11.59 mo.</span>
+        </div>
+      </div>
+      <div class="coef-item">
+        <span class="coef-name">Diagnosis year</span>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div class="coef-bar-wrap"><div class="coef-bar" style="width:68%"></div></div>
+          <span class="coef-val">−7.88 mo.</span>
+        </div>
+      </div>
+      <div class="coef-item">
+        <span class="coef-name">Black race</span>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div class="coef-bar-wrap"><div class="coef-bar" style="width:7%"></div></div>
+          <span class="coef-val">−0.78 mo.</span>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top:1.25rem;">These findings align with clinical expectations, as earlier-stage cancers are associated with more favorable prognoses. The negative coefficient for diagnosis year (−7.88 months per year) is a right-censoring artifact: patients diagnosed in later years had less follow-up time at the point of data extraction, not worse clinical outcomes. Racial differences, while statistically significant, are clinically modest in magnitude (e.g., −0.78 months for Black patients) and should be interpreted as areas warranting further investigation rather than strong independent predictors.</p>
+  </section>
+
+  <!-- FINDINGS -->
+  <section id="findings">
+    <div class="section-number">05 — Key Findings</div>
+    <h2>Key Findings</h2>
+    <ul class="findings-list">
+      <li>Cancer stage is the strongest predictor of survival (Localized: +30.4 mo.; Distant: reference)</li>
+      <li>Localized disease is associated with significantly longer survival compared to distant-stage diagnosis</li>
+      <li>Age ≥85 is consistently linked to poorer outcomes (−11.6 months on average)</li>
+      <li>Racial disparities are statistically present but clinically modest (effect sizes &lt;2 months)</li>
+      <li>The negative association for diagnosis year reflects right-censoring bias, not worsening outcomes over time</li>
+      <li>R² = 0.31 represents moderate but expected performance given the limited feature set and clinical complexity of survival prediction</li>
+    </ul>
+  </section>
+
+  <!-- CONCLUSION -->
+  <section id="conclusion">
+    <div class="section-number">06 — Conclusion</div>
+    <h2>Conclusion</h2>
+    <p>This analysis used SEER colorectal cancer data to model survival outcomes based on patient demographics and clinical characteristics. Results indicate that cancer stage at diagnosis is the most significant predictor of survival, with localized disease associated with substantially better outcomes. Age also plays a critical role, with older patients experiencing shorter survival durations.</p>
+    <p>From a healthcare perspective, these findings reinforce the importance of early detection and timely intervention. Data-driven insights such as these can support targeted screening efforts, improve care coordination, and guide resource allocation for high-risk populations.</p>
+
+    <h3>Potential Applications</h3>
+    <div class="app-grid">
+      <div class="app-card">Expanding colorectal cancer screening programs</div>
+      <div class="app-card">Enhancing follow-up care for advanced-stage patients</div>
+      <div class="app-card">Strengthening care coordination for older adults</div>
+      <div class="app-card">Addressing disparities in survival outcomes</div>
+      <div class="app-card">Leveraging analytics for early intervention strategies</div>
+    </div>
+
+    <p>Overall, this project demonstrates the value of structured healthcare data in uncovering meaningful patterns and supporting informed decision-making in oncology care.</p>
+  </section>
+
+</main>
+
+<footer>
+  <strong>SEER Colorectal Cancer Survival Analysis</strong> &nbsp;·&nbsp; Multiple Linear Regression &nbsp;·&nbsp; R² = 0.3114 &nbsp;·&nbsp; n = 198,346
+</footer>
+
+</body>
+</html>
