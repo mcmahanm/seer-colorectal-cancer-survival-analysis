@@ -1,5 +1,8 @@
 # 📊 Predicting Colorectal Cancer Survival Using SEER Data
 
+🔗 **Live Report:**  
+https://mcmahann.github.io/seer-colorectal-cancer-survival-analysis/
+
 ## 🔍 Overview
 This project analyzes colorectal cancer survival outcomes using data from the SEER (Surveillance, Epidemiology, and End Results) program. The goal is to evaluate whether patient demographics and clinical characteristics can predict survival duration following diagnosis.
 
